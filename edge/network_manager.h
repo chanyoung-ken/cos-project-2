@@ -25,6 +25,7 @@ class NetworkManager {
     int init();
     int sendData(uint8_t *data, int dlen);
     uint8_t receiveCommand();
+    uint8_t receiveCommand(int sock_fd);
 };
 
 #endif /* __NETWORK_MANAGER_H__ */
