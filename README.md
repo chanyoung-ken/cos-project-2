@@ -1,6 +1,17 @@
 # 엣지 컴퓨팅 기반 분산 AI 시스템
 
 > EL 1001 Term Project - 에너지 모니터링을 위한 분산 AI 예측 시스템
+```bash
+# 1. AI 모듈 시작
+cd ai-module && python ai.py --port 5556
+
+# 2. 서버 시작  
+cd server && python server.py --algorithm lstm --dimension 12 --index 6 --caddr 127.0.0.1 --cport 5556 --lport 5555 --name energy_model
+
+# 3. 엣지 디바이스 실행
+cd edge && .\edge.exe --addr 127.0.0.1 --port 5555
+```
+
 
 ## 📋 프로젝트 개요
 
@@ -235,3 +246,4 @@ python server.py --algorithm lstm --dimension 12 --index 6 --caddr 127.0.0.1 --c
 - **예측 정확도**: 임계값 20% 내 예측 성공률
 - **응답 시간**: 100ms 이하 예측 응답
 - **처리량**: 초당 10개 이상 센서 데이터 처리
+
