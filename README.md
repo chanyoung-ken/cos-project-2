@@ -247,3 +247,171 @@ python server.py --algorithm lstm --dimension 12 --index 6 --caddr 127.0.0.1 --c
 - **응답 시간**: 100ms 이하 예측 응답
 - **처리량**: 초당 10개 이상 센서 데이터 처리
 
+---
+
+## 🔍 상세 작동 원리
+
+### 📂 핵심 파일 및 함수 설명
+
+#### 🤖 AI 모듈 (`ai-module/`)
+
+##### `ai.py` - 메인 AI 서버
+- **`class AIModule`**: AI 모델들을 총괄 관리하는 핵심 클래스
+  - `add_model()`: 새로운 AI 모델 생성 및 등록
+  - `learning()`: 모델 훈련 실행 
+  - `prediction()`: 실시간 예측 수행
+  - `get_result()`: 예측 정확도 및 결과 분석
+
+- **Flask REST API 엔드포인트**:
+  - `Main`: 사용 가능한 알고리즘 및 모델 목록 조회
+  - `ModelGenerator`: 모델 생성 및 정보 조회
+  - `Trainer`: 훈련 데이터 추가 및 모델 학습
+  - `Tester`: 테스트 데이터 입력 및 예측 수행
+  - `Evaluator`: 예측 결과 및 성능 평가
+
+##### `modules/model_manager.py` - 모델 관리자
+```python
+class ModelManager:
+    def __init__(self, algorithm, dimension=1)    # 알고리즘별 모델 초기화
+    def add_algorithm(self, algorithm)            # 새 알고리즘 등록
+    def learning(self, dm, dimension=1)           # 모델 훈련 실행
+    def prediction(self, value, dimension=1)      # 예측 수행
+```
+
+##### `modules/data_manager.py` - 데이터 관리자
+```python
+class DataManager:
+    def add_data(self, value)           # 훈련/테스트 데이터 추가
+    def get_data(self)                  # 저장된 데이터 반환
+    def pop_data(self)                  # 데이터 하나씩 제거
+```
+
+##### `algorithms/lstm.py` - LSTM 알고리즘
+```python
+class Lstm(Algorithm):
+    def learning(self, dataset, dimension=1):
+        # 시퀀스 길이 5로 시계열 데이터 구성
+        # Keras LSTM 모델 구성: 128 유닛 × 2층 + Dropout
+        # 50 에포크 훈련 실행
+        
+    def prediction(self, value, dimension=1):
+        # 큐에 최신 5개 데이터 유지
+        # LSTM 모델로 다음 값 예측
+```
+
+#### 🖥️ 서버 (`server/`)
+
+##### `server.py` - TCP-HTTP 브릿지 서버
+```python
+class Server:
+    def __init__(self, name, algorithm, dimension, index, port, caddr, cport, ntrain, ntest):
+        # AI 모듈과 HTTP 연결 설정
+        # TCP 서버 소켓 생성 및 바인딩
+        
+    def connecter(self):
+        # AI 모듈에 모델 생성 요청 전송
+        # POST /{model_name} API 호출
+        
+    def listener(self):
+        # TCP 클라이언트 연결 대기
+        # 멀티스레드로 클라이언트 핸들링
+        
+    def handler(self, client):
+        # 3바이트 헤더 수신: [메시지타입][페이로드길이]
+        # 45바이트 센서 데이터 파싱
+        # AI 모듈에 HTTP 예측 요청
+        # 4바이트 예측 결과 응답
+        
+    def parse_data(self, buf, is_training):
+        # 바이너리 데이터를 센서 값으로 변환
+        # [온도, 습도, 전력, 월] 특성 벡터 생성
+```
+
+#### 🔌 엣지 디바이스 (`edge/`)
+
+##### `main.cpp` - 엣지 디바이스 메인
+```cpp
+int main(int argc, char *argv[]) {
+    // 명령행 인자 파싱 (서버 주소, 포트)
+    // Edge 객체 생성 및 초기화
+    // edge->run() 실행으로 데이터 수집 시작
+}
+```
+
+##### `edge.cpp` - 엣지 디바이스 클래스
+- **`Edge::init()`**: 네트워크 매니저 및 데이터 수신기 초기화
+- **`Edge::run()`**: 메인 루프 실행, 센서 데이터 수집 및 전송
+
+##### `network_manager.cpp` - 네트워크 통신 관리
+- **`NetworkManager::connect()`**: 서버와 TCP 연결 설정
+- **`NetworkManager::send_data()`**: 센서 데이터 전송
+- **`NetworkManager::receive_response()`**: AI 예측 결과 수신
+
+### 🔄 데이터 플로우 상세 과정
+
+#### 1️⃣ 시스템 초기화 단계
+```
+1. AI 모듈 시작 → Flask 서버 구동 (포트 5556)
+2. 서버 시작 → AI 모듈에 모델 생성 요청
+3. 엣지 디바이스 시작 → 서버와 TCP 연결
+```
+
+#### 2️⃣ 실시간 예측 단계
+```
+1. 엣지: 센서 데이터 수집 (온도, 습도, 전력, 월)
+2. 엣지: 12차원 특성 벡터 생성 및 45바이트로 패킹
+3. 엣지 → 서버: TCP로 센서 데이터 전송
+4. 서버: 바이너리 데이터 파싱 및 JSON 변환
+5. 서버 → AI: HTTP PUT /model/testing 요청
+6. AI: LSTM 모델로 전력 사용량 예측
+7. AI → 서버: HTTP 응답으로 예측값 반환
+8. 서버 → 엣지: TCP로 4바이트 예측 결과 전송
+9. 엣지: 예측 결과 처리 및 다음 수집 사이클
+```
+
+#### 3️⃣ 모델 학습 단계 (옵션)
+```
+1. 서버 → AI: PUT /model/training (훈련 데이터 추가)
+2. AI: DataManager에 데이터 축적
+3. 서버 → AI: POST /model/training (모델 훈련 실행)  
+4. AI: LSTM 시퀀스 데이터 구성 및 50 에포크 훈련
+5. AI → 서버: 훈련 완료 응답
+```
+
+### ⚡ 성능 최적화 요소
+
+#### LSTM 모델 최적화
+- **시퀀스 길이**: 5개 시점의 과거 데이터 활용
+- **아키텍처**: 128 유닛 × 2층 LSTM + 50% 드롭아웃
+- **메모리 효율**: 큐 자료구조로 최신 5개 데이터만 유지
+
+#### 통신 최적화  
+- **바이너리 프로토콜**: 45바이트 압축 센서 데이터
+- **멀티스레딩**: 서버에서 동시 다중 클라이언트 처리
+- **비동기 처리**: 예측 요청과 응답의 파이프라인 처리
+
+#### 에러 처리 및 복구
+- **연결 복구**: TCP 연결 끊김 시 자동 재연결
+- **예측 실패**: 모델 미준비 시 -1 반환으로 안전 처리
+- **로깅 시스템**: DEBUG/INFO/ERROR 레벨별 상세 로깅
+
+### 🎯 확장 가능성
+
+#### 새로운 알고리즘 추가
+```python
+# algorithms/new_algorithm.py
+class NewAlgorithm(Algorithm):
+    def learning(self, dataset, dimension=1):
+        # 커스텀 학습 로직 구현
+    
+    def prediction(self, value, dimension=1):
+        # 커스텀 예측 로직 구현
+```
+
+#### 다중 센서 지원
+- `dimension` 매개변수로 입력 차원 확장 가능
+- `index` 매개변수로 예측 대상 선택 가능
+- 새로운 센서 타입 추가 시 데이터 파싱 로직만 수정
+
+이렇게 모듈화된 설계로 각 컴포넌트가 독립적으로 확장 및 수정 가능하며, 실시간 분산 AI 시스템의 핵심 요구사항을 모두 충족합니다. 🚀
+
