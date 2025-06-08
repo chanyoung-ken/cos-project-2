@@ -34,3 +34,18 @@
 `make`
 `./edge --addr [IP address of your laptop] --port [port number of Server]`
 `e.g., ./edge --addr 172.24.1.2 --port 5555`
+
+Terminal 1: AI 모듈
+powershell cd ai-module
+python ai.py --port 5556
+
+Terminal 2: AI 모델 설정
+powershell python manual_ai_setup.py
+
+Terminal 3: 서버
+powershell cd server
+python server.py --algorithm lstm --dimension 12 --index 6 --caddr 127.0.0.1 --cport 5556 --lport 5555 --name energy_model
+
+Terminal 4: 엣지 디바이스
+powershell cd edge
+.\edge.exe --addr 127.0.0.1 --port 5555
