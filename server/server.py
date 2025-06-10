@@ -168,8 +168,8 @@ class Server:
                             
                             # Python requests.post()를 사용해 AI 모듈의 /predict 엔드포인트에 JSON으로 전송
                             # Send to AI module's /predict endpoint using requests.post() with JSON
-                            ai_url = f"http://{self.caddr}:{self.cport}/predict"
-                            ai_request = {"features": features}
+                            ai_url = f"http://{self.caddr}:{self.cport}/{self.name}/testing"
+                            ai_request = {"value": features}
                             
                             logging.info(f"[*] Sending prediction request to {ai_url}")
                             ai_response = requests.post(ai_url, json=ai_request, timeout=5)

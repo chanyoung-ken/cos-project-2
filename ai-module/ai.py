@@ -199,7 +199,7 @@ class ModelGenerator(Resource):
 
     def post(self, model_id):
         ret = {}
-        args = json.loads(request.get_json(force=True))
+        args =request.get_json(force=True)
         if "algorithm" not in args:
             ret["opcode"] = "failure"
             ret["reason"] = "the algorithm parameter is missing"
@@ -257,7 +257,7 @@ class Trainer(Resource):
     def put(self, model_id):
         ret = {}
         if ai.has_model(model_id):
-            args = json.loads(request.get_json(force=True))
+            args = request.get_json(force=True)
             if "value" not in args:
                 ret["opcode"] = "failure"
                 ret["reason"] = "the necessary attribute 'value' is not included"
@@ -292,7 +292,7 @@ class Tester(Resource):
     def put(self, model_id):
         ret = {}
         if ai.has_model(model_id):
-            args = json.loads(request.get_json(force=True))
+            args = request.get_json(force=True)
             if "value" not in args:
                 ret["opcode"] = "failure"
                 ret["reason"] = "the necessary attribute 'value' is not included"
