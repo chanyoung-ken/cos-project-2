@@ -75,7 +75,7 @@ python ai.py --port 5556
 **AI 모듈 기능:**
 - REST API 서버 실행 (Flask)
 - 머신러닝 모델 관리 (생성, 훈련, 예측)
-- 지원 알고리즘: LSTM, CNN 등
+- 지원 알고리즘: LSTM
 
 #### 2️⃣ Terminal 2: AI 모델 설정 (선택사항)
 
