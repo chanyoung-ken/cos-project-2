@@ -5,6 +5,8 @@ class DataManager:
     def __init__(self):
         logging.info("Initializing the data manager")
         self.data = []
+    def __len__(self):
+        return len(self.data)
 
     def add_data(self, value):
         self.data.append(value)

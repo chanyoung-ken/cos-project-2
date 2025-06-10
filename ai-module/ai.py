@@ -308,7 +308,7 @@ class Tester(Resource):
                     result = ai.prediction(model_id, value)
                     logging.debug("result: {}".format(result))
                     ret["opcode"] = "success"
-                    ret["prediction"] = str(result)
+                    ret["prediction"] = result[ai.get_model_power_index(model_id)]
         else:
             ret["opcode"] = "failure"
             ret["reason"] = "the model {} is unavailable".format(model_id)
@@ -327,7 +327,7 @@ class Evaluator(Resource):
             ret["opcode"] = "success"
             ret["num"] = num
             ret["sequence"] = seq
-            ret["prediction"] = str(pred)
+            ret["prediction"] = pred
             ret["index"] = index
             ret["threshold"] = str(threshold)
             ret["correct"] = correct
