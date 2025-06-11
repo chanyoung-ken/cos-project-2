@@ -3,6 +3,7 @@ from flask import Flask, json, jsonify, abort, make_response, request
 from flask_restful import Api, Resource, reqparse
 from modules.data_manager import DataManager
 from modules.model_manager import ModelManager
+from modules.evaluator import ModelEvaluator
 from putils.autils import init_algorithms
 
 THRESHOLD = 0.20
@@ -16,6 +17,7 @@ class AIModule:
         self.dimensions = {}
         self.indexes = {}
         self.results = {}
+        self.evaluator = ModelEvaluator(threshold=THRESHOLD)
 
     def add_model(self, name, algorithm, dimension, index):
         model = ModelManager(algorithm)
@@ -153,6 +155,26 @@ class AIModule:
                 ip += 1
         accuracy = round(cp / num * 100, 2)
         return num, sequence[sidx:], prediction[sidx:], index, THRESHOLD, cp, ip, accuracy
+    
+    def get_detailed_evaluation(self, name):
+        """상세한 평가 지표를 계산하여 반환"""
+        sequence = self.testing[name].get_data()
+        prediction = self.results[name].get_data()
+        index = self.get_model_power_index(name)
+        
+        if not sequence or not prediction:
+            return {"error": "평가할 데이터가 없습니다"}
+        
+        # 새로운 평가 모듈 사용
+        metrics = self.evaluator.calculate_metrics(sequence, prediction, index)
+        return metrics
+    
+    def set_evaluation_threshold(self, threshold):
+        """평가 임계값 변경"""
+        global THRESHOLD
+        THRESHOLD = threshold
+        self.evaluator.set_threshold(threshold)
+        logging.info(f"평가 임계값 변경: {threshold}")
 
     def learning(self, name):
         self.models[name]
@@ -338,6 +360,60 @@ class Evaluator(Resource):
             ret["reason"] = "the model {} is unavailable".format(model_id)
         return make_response(jsonify(ret))
 
+# URI: /<string: model_id>/detailed_evaluation
+# HTTP behavior: GET
+class DetailedEvaluator(Resource):
+    def __init__(self):
+        super(DetailedEvaluator, self).__init__()
+
+    def get(self, model_id):
+        ret = {}
+        if ai.has_model(model_id):
+            metrics = ai.get_detailed_evaluation(model_id)
+            if "error" in metrics:
+                ret["opcode"] = "failure"
+                ret["reason"] = metrics["error"]
+            else:
+                ret["opcode"] = "success"
+                ret["metrics"] = metrics
+                ret["summary"] = ai.evaluator.get_performance_summary(metrics)
+        else:
+            ret["opcode"] = "failure"
+            ret["reason"] = "the model {} is unavailable".format(model_id)
+        return make_response(jsonify(ret))
+
+# URI: /config/threshold
+# HTTP behavior: GET, PUT
+class ThresholdConfig(Resource):
+    def __init__(self):
+        super(ThresholdConfig, self).__init__()
+
+    def get(self):
+        ret = {
+            "opcode": "success",
+            "current_threshold": THRESHOLD,
+            "description": "현재 설정된 정확도 판정 임계값 (상대 오차 기준)"
+        }
+        return make_response(jsonify(ret))
+
+    def put(self):
+        ret = {}
+        args = request.get_json(force=True)
+        if "threshold" not in args:
+            ret["opcode"] = "failure"
+            ret["reason"] = "threshold 값이 필요합니다"
+        else:
+            threshold = args["threshold"]
+            if not isinstance(threshold, (int, float)) or threshold <= 0:
+                ret["opcode"] = "failure"
+                ret["reason"] = "threshold는 0보다 큰 숫자여야 합니다"
+            else:
+                ai.set_evaluation_threshold(threshold)
+                ret["opcode"] = "success"
+                ret["new_threshold"] = threshold
+                ret["message"] = f"임계값이 {threshold}로 변경되었습니다"
+        return make_response(jsonify(ret))
+
 def command_line_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--addr", metavar="<IP address>", help="IP address", type=str, default="0.0.0.0")
@@ -360,6 +436,8 @@ def main():
     api.add_resource(Trainer, '/<string:model_id>/training')
     api.add_resource(Tester, '/<string:model_id>/testing')
     api.add_resource(Evaluator, '/<string:model_id>/result')
+    api.add_resource(DetailedEvaluator, '/<string:model_id>/detailed_evaluation')
+    api.add_resource(ThresholdConfig, '/config/threshold')
 
     app.run(host=args.addr, port=args.port)
 
